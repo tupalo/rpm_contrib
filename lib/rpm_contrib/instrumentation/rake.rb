@@ -13,9 +13,16 @@ DependencyDetection.defer do
 
   executes do
     ::Rake::Task.class_eval do
-      include NewRelic::Agent::MethodTracer
 
-      add_method_tracer :execute, 'Rake/execute'
+      def execute_with_newrelic_trace(*args)
+        NewRelic::Agent.trace_execution_scoped "Rake/#{self.name}" do
+          NewRelic::Agent::Instrumentation::MetricFrame.current(true).start_transaction
+          execute_without_newrelic_trace(*args)
+        end
+      end
+
+      alias_method :execute_without_newrelic_trace, :execute
+      alias_method :execute, :execute_with_newrelic_trace
     end
   end
 end
